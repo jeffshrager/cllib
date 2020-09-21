@@ -1,0 +1,50 @@
+If {#} != 1  OR  "{1}" == ""
+	Echo "### {0} - A version must be specified." > Dev:StdErr
+	Exit 1
+Else
+	set VERSION "{1}"
+End
+
+set LOCATION "Macintosh HD:Desktop Folder"
+set BINARIES ":macintosh"
+
+set FOLDER "{LOCATION}:XLISP-STAT {VERSION} Ä"
+
+set AUTOFSLFILES "cmpload.fsl oneway.fsl nonlin.fsl maximize.fsl ¶
+                  bayes.fsl stepper.fsl glim.fsl"
+set SOURCES "init.lsp common.lsp common2.lsp common3.lsp help.lsp objects.lsp stats.lsp dialogs.lsp ¶
+             graphics.lsp graph2.lsp graph3.lsp regress.lsp menus.lsp loadfsl.lsp ¶
+			 conditns.lsp pathname.lsp cmpload.lsp oneway.lsp nonlin.lsp ¶
+			 maximize.lsp bayes.lsp stepper.lsp glim.lsp cmpsys.lsp ¶
+			 shlib.lsp"
+set CMPSOURCES ":compiler:backquot.lsp :compiler:cmpmacro.lsp ¶
+                :compiler:convert.lsp :compiler:cells.lsp :compiler:simplify.lsp ¶
+				:compiler:lift.lsp :compiler:gencode.lsp :compiler:peephole.lsp ¶
+				:compiler:assemble.lsp :compiler:cmpfront.lsp"
+
+duplicate -y {AUTOFSLFILES} :Autoload
+
+NewFolder "{FOLDER}"
+NewFolder "{FOLDER}:Autoload"
+NewFolder "{FOLDER}:Compiler"
+NewFolder "{FOLDER}:Lisp Sources"
+NewFolder "{FOLDER}:Lisp Sources:Compiler"
+
+duplicate -y xlisp.hlp "{FOLDER}"
+duplicate -y xlisp.wks "{FOLDER}"
+duplicate -y :macintosh:xlsx.h xlshlib.h xlwrap.h "{FOLDER}"
+duplicate -y COPYING "{FOLDER}"
+duplicate -y :macintosh:README.mac "{FOLDER}:README"
+
+duplicate -y :Data "{FOLDER}"
+duplicate -y :Examples "{FOLDER}"
+duplicate -y :Autoload:_autoidx.lsp :Autoload:Å.fsl "{FOLDER}:Autoload"
+duplicate -y :Compiler:Å.fsl "{FOLDER}:Compiler"
+
+duplicate -y {SOURCES} "{FOLDER}:Lisp Sources"
+duplicate -y {CMPSOURCES} "{FOLDER}:Lisp Sources:Compiler"
+
+duplicate -y XLSPPC    "{LOCATION}:XLISP-STAT {VERSION} PPC"
+duplicate -y XLS68KGEN "{LOCATION}:XLISP-STAT {VERSION} GEN"
+duplicate -y XLS68K020 "{LOCATION}:XLISP-STAT {VERSION} 020"
+duplicate -y XLS68K881 "{LOCATION}:XLISP-STAT {VERSION} 881"

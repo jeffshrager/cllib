@@ -1,0 +1,83 @@
+xlispstat2.1R2 incorporates some bug fixes and minor modifications.
+The changed files are listed below. Patches for working around bugs
+in the ULTRIX 4.0 servers and libraries have been incorporated, so
+the separate ultrix patch is no longer needed.
+
+Makefile		modified to no longer use ld -r (which ceased to work
+			properly with shared libraries on SunOS 4.1 and never
+			worked on the Cray XMP).
+
+README.2.1R2		This file
+
+RELEASE			Minor fixes and spelling corrections
+
+StX11options.h		Added define for working around ULTRIX XDrawPoints bug
+
+X11dialogs.c		Added XSync all to StX11DialogReset to drop pending
+			X events on an error reset
+
+X11graph.c		Added code for working around ULTRIX bugs
+
+X11listitem.c		Fixed bug in :set-text method for 2D lists
+
+X11scroll.c		removed pointer grab to avoid freezing the screen if
+			the method goes into an infinite loop or the server
+			gets confused on queue overflow (may be a problem in
+			Sun's xnews server)
+
+X11slider.c		removed pointer grab to avoid freezing the screen if
+			the method goes into an infinite loop or the server
+			gets confused on queue overflow (may be a problem in
+			Sun's xnews server)
+
+X11text.c		Fixed bugs that could result in overestimate of text
+			field width
+
+commonmath.c		Fixed rem function to match CL definition for neg. args
+			Added mod function (same as old version of rem)
+			Modified integer arithmetic to (hopefully) overflow to
+			floating point when necessary. This probably needs
+			more work but should do for now. If it does not work
+			on some systems you can define a preprocessor variable
+			to revert to the previous handling of integer 
+			arithmetic.
+
+compound.c		fixed bug of intermediate results in arithmetic with
+			matrices or objects not being protected from GC
+
+linalg.c		fixed bug of result of chol-decomp not being
+			protected from GC
+
+math.c			added mod function
+
+osdefs.h		added mod function
+
+osptrs.h		added mod function
+
+postscript.c		added BoundingBox comment to output (for psfig)
+
+version.h		updated to reflect new release
+
+xlisp.help		fixed incorrect argument info for list item :set-text
+			added mod help info
+
+xlisp.help.small	added to the distribution
+
+macintosh/macdialogs2.c	fixed bug that could cause overestimate of text field
+			width
+
+machines/decstation	added directory
+
+machines/decstation/README	added pointer to pmax directory (not everyone
+				is in on the pmax terminology!)
+
+machines/pmax/README		added description of ULTRIX 4.0 X bug
+				workarounds
+
+machines/pmax/StX11options.h	set up for use with ULTRIX 4.0/dxwm
+
+machines/sun3/README		modified to reflect changes in Makefile
+				added info for use with openwin
+
+machines/sun4/README		modified to reflect changes in Makefile
+				added info for use with openwin

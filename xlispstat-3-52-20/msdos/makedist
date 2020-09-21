@@ -1,0 +1,96 @@
+DISTROOT=\users\luke\tmp
+PKZIPDIR=\users\luke\pkzip
+
+!if $d(WIN16)
+  DIST=$(DISTROOT)\dist
+  EXENAME=wxls
+  ZIPNAME=$(DISTROOT)\wxlszip
+!else
+  DIST=$(DISTROOT)\dist32
+  EXENAME=wxls32
+  ZIPNAME=$(DISTROOT)\wxls32zp
+!endif
+
+AUTOFSLFILES=cmpload.fsl oneway.fsl nonlin.fsl maximize.fsl \
+             bayes.fsl stepper.fsl glim.fsl
+SOURCES=init.lsp common.lsp common2.lsp common3.lsp help.lsp objects.lsp \
+        stats.lsp linalg.lsp dialogs.lsp \
+        graphics.lsp graph2.lsp graph3.lsp regress.lsp menus.lsp \
+        loadfsl.lsp conditns.lsp pathname.lsp cmpload.lsp oneway.lsp \
+        nonlin.lsp maximize.lsp bayes.lsp stepper.lsp glim.lsp cmpsys.lsp \
+        shlib.lsp dde.lsp
+CMPSOURCES=compiler\backquot.lsp compiler\cmpmacro.lsp \
+           compiler\convert.lsp compiler\cells.lsp compiler\simplify.lsp \
+           compiler\lift.lsp compiler\gencode.lsp compiler\peephole.lsp \
+           compiler\assemble.lsp compiler\cmpfront.lsp
+
+zip: copydist
+	-del $(ZIPNAME).exe
+	-$(PKZIPDIR)\pkzip -pr $(ZIPNAME).zip $(DIST)\*.*
+	$(PKZIPDIR)\zip2exe $(ZIPNAME)
+	del $(ZIPNAME).zip
+
+copydist: copycore copyautoload copysources copycmpsources copydata copyexamples
+
+copycore:
+	-md $(DIST)
+	-md $(DIST)\Data
+	-md $(DIST)\Examples
+	-md $(DIST)\Autoload
+	-md $(DIST)\compiler
+	-md $(DIST)\lspsrc
+	-md $(DIST)\lspsrc\compiler
+	copy xlisp.hlp $(DIST)
+	copy $(EXENAME).exe $(DIST)
+	copy xlisp.wks $(DIST)
+	copy msdos\xlsx.h $(DIST)
+	copy xlshlib.h $(DIST)
+	copy xlwrap.h $(DIST)
+	copy msdos\xlsx.c $(DIST)
+	copy copying $(DIST)
+	copy msdos\readme.win $(DIST)\readme
+	copy msdos\config.lsp $(DIST)
+	copy msdos\lspedit\lspedit.exe $(DIST)
+	-copy msdos\xlsclient\xlsclient.exe $(DIST)\xlsclien.exe
+	copy msdos\wxls.tex $(DIST)
+	copy autoload\_autoidx.lsp $(DIST)\Autoload
+	copy compiler\*.fsl $(DIST)\compiler
+
+copyautoload: $(AUTOFSLFILES)
+	&copy $** $(DIST)\Autoload
+
+copysources: $(SOURCES)
+	&copy $** $(DIST)\lspsrc
+
+copycmpsources: $(CMPSOURCES)
+	&copy $** $(DIST)\lspsrc\compiler
+
+copydata:
+	copy Data\absorbtion.lsp $(DIST)\Data\absorbti.lsp
+	copy Data\aircraft.lsp $(DIST)\Data
+	copy Data\book.lsp $(DIST)\Data
+	copy Data\car-prices.lsp $(DIST)\Data\car-pric.lsp
+	copy Data\diabetes.lsp $(DIST)\Data
+	copy Data\heating.lsp $(DIST)\Data
+	copy Data\iris.lsp $(DIST)\Data
+	copy Data\leukemia.lsp $(DIST)\Data
+	copy Data\metabolism.lsp $(DIST)\Data\metaboli.lsp
+	copy Data\oxygen.lsp $(DIST)\Data
+	copy Data\puromycin.lsp $(DIST)\Data\puromyci.lsp
+	copy Data\randu.lsp $(DIST)\Data
+	copy Data\stackloss.lsp $(DIST)\Data\stacklos.lsp
+	copy Data\tutorial.lsp $(DIST)\Data
+
+copyexamples:
+	copy Examples\abrasiondemo.lsp $(DIST)\Examples\abrasion.lsp
+	copy Examples\addbox.lsp $(DIST)\Examples
+	copy Examples\addhandrotate.lsp $(DIST)\Examples\addhandr.lsp
+	copy Examples\bcdemo.lsp $(DIST)\Examples
+	copy Examples\dataprotos.lsp $(DIST)\Examples\dataprot.lsp
+	copy Examples\fstat.lsp $(DIST)\Examples
+	copy Examples\inspect.lsp $(DIST)\Examples
+	copy Examples\plotcontrols.lsp $(DIST)\Examples\plotcont.lsp
+	copy Examples\regdemo.lsp $(DIST)\Examples
+	copy Examples\rotatedemo.lsp $(DIST)\Examples\rotatede.lsp
+	copy Examples\tour.lsp $(DIST)\Examples
+	copy Examples\tourdemo.lsp $(DIST)\Examples

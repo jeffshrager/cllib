@@ -1,6 +1,161 @@
 ;;; Common Lisp Utilities Copyright (c) Jeff Shrager 1999-2006 
 ;;; Contact: jshrager@stanford.edu
 
+;;; =============================================
+;;; A sort of partially-working attempt to deal with mail DATE: headers
+
+;;; Known unhandled cases:
+;;; "Date: 8.16.94 10:23"
+;;; "Date: 26-September-89 (Tuesday) 6:39:57 PDT"
+;;; "Date: Friday, June 17th "
+;;; "Date: Tue Aug 14 12:54:26 1990"
+;;; "Date: TUE 22 MAR" (Year, maybe, ass-wipes!?!)
+;;; "Date: Sep 18 (3 days ago)" AHHHHHHHHHHHHHH!!!!!!!!!!!!!!!!!! (lol)
+
+;;; These should all come out the same (except where they don't work!)
+
+(defun test-parse-date ()
+  (print (email-date-to-approximate-universal-time "Date: Wed,  7 Apr 2004 11:10:34 -0700"))
+  (print (email-date-to-approximate-universal-time "Date: Wed, 7 Apr 2004 11:10:34 -0700"))
+  (print (email-date-to-approximate-universal-time "Date: Wed, 7 April 2004 11:10:34 -0700"))
+  (print (email-date-to-approximate-universal-time "Date: Wed, 7 April 2004."))
+  (print (email-date-to-approximate-universal-time "Date: Fri, 7 Apr 04 14:26:23 -0500"))
+  (print (email-date-to-approximate-universal-time "DATE: Wed, Apr 7 2004 10:39:42 -0800"))
+  (print (email-date-to-approximate-universal-time "DATE: Wed, Apr 7, 2004 10:39:42 -0800"))
+  (print (email-date-to-approximate-universal-time "Date: 07 Apr 2004 22:01:35 -0000"))
+  (print (email-date-to-approximate-universal-time "Date: 04/07/04 04:08:08=0D"))
+  (print (email-date-to-approximate-universal-time "Date: 4/7/2004 04:08:08=0D"))
+  )
+
+(defparameter *months*
+  '(("Jan" "January")
+    ("Feb" "February")
+    ("Mar" "March")
+    ("Apr" "April")
+    ("May")
+    ("Jun" "June")
+    ("Jul" "July")
+    ("Aug" "August")
+    ("Sep" "September")
+    ("Oct" "October")
+    ("Nov" "November")
+    ("Dec" "December")))
+
+(defun email-date-to-approximate-universal-time (ds &key (ignore-errors? t)) ;; date-string
+  (if ignore-errors?
+      (or (ignore-errors (email-date-to-approximate-universal-time-2 ds))
+	  (progn (format t "Unparsable date: ~s~%" ds) nil))
+    (email-date-to-approximate-universal-time-2 ds)))
+      
+(defun email-date-to-approximate-universal-time-2 (ds)
+  (let* ((dmy (parse-date ds)))
+    (encode-universal-time
+     0			;;second
+     0			;;minute
+     0			;; hour
+     (first dmy)	;; day
+     (second dmy)	;; Month
+     (third dmy)	;; year
+     )))
+
+;;; Email dates all look like:
+;;;      "Date: Wed,  7 Apr 2004 11:10:34 -0700" (I hope!)
+;;;      "Date: Wed, 7 Apr 2004 11:10:34 -0700" (I hope!)
+;;;      "Date: 27 Apr 2004 22:01:35 -0000"
+;;;      "Date: 03/16/04 04:08:08=0D" NOTE THAT THIS IS IN MONTH DAY YEAR! (Ugh!)
+;;; Reminder: encode-universal-time
+
+(Defun parse-date (s) ;; Always returns a list: (day month year) as numbers
+  ;; First figure if we have / form and split
+  (if (position #\/ s)
+      (parse-/-date s)
+    (parse-no/-date s)))
+
+(defun parse-/-date (s)
+  ;;  "Date: 03/16/04 04:08:08=0D" NOTE THAT THIS IS IN MONTH DAY YEAR! (Ugh!)
+  (let* ((// (loop for elt in (string-split s :delimiter #\space)
+		  when (position #\/ elt) do (return elt)))
+	 (mdy (mapcar #'parse-integer (string-split // :delimiter #\/)))
+	 (y? (third mdy))
+	 (year (short-year-corrector y?))
+	 )
+    (list (second mdy) (first mdy) year)))
+
+(defun short-year-corrector (y?)
+  (if (>  y? 1980) y? (if (> y? 50) (+ 1900 y?) (+ 2000 y?))))
+
+(defun convert-month (m) ;; Gives nil if it can't find the month
+  (loop for mons in *months*
+	as n from 1 by 1
+	when (member m mons :test #'string-equal)
+	do (return n)))
+
+(defun parse-no/-date (s)
+  (let* ((parse (mapcar #'(lambda (s) (string-trim ". ,;/" s)) (string-split s :delimiter #\space)))
+	 ;; Sometimes the day of the week is left out, so we align on the year
+	 ;; to take account of missing components
+	 (year-at (loop for elt in parse
+			as val = (ignore-errors (parse-integer elt))
+			as pos from 0 by 1
+			when (and val (> val 1980))
+			do (return pos)))
+	 )
+    ;; The thing can be reversed! FUCK!
+    (or 
+     (ignore-errors 
+       (if (ignore-errors (parse-integer (nth (- year-at 2) parse)))
+	   ;; This way: 7 Apr 2004
+	   (list (parse-integer (nth (- year-at 2) parse))
+		 (convert-month (nth (- year-at 1) parse))
+		 (parse-integer (nth year-at parse)))
+	 ;; Other way around: Apr 7 2004
+	 (list (parse-integer (nth (- year-at 1) parse))
+	       (convert-month (nth (- year-at 2) parse))
+	       (parse-integer (nth year-at parse)))))
+     ;; If that doesn't work, try the it's possible that the
+     ;; year is un yy form, in which case we have to specially look for
+     ;; this format: "Date: Fri, 24 Dec 04 14:26:23 -0500" For the
+     ;; moment, we just assume this format!
+     (let ((year-at (1+ (loop for elt in parse
+			      as n from 0 by 1
+			      as month = (loop for mons in *months*
+					       as m from 1 by 1
+					       when (member elt mons :test #'string-equal)
+					       do (return m))
+			      when month do (return n)))))
+       (list (parse-integer (nth (- year-at 2) parse))
+	     (convert-month (nth (- year-at 1) parse))
+	     (short-year-corrector (parse-integer (nth year-at parse)))))
+     )))
+
+;;; =============================================
+
+(defun remdups (l &key (test #'eq))
+  (loop for l+ on l
+	unless (member (car l+) (cdr l+) :test test)
+	collect (car l+)))
+
+;;; =============================================
+;;; (funmat out-stream "Foo ~a" exp1 " bar ~s" exp2 ...)
+;;; -> (format out-stream "Foo ~a bar ~s" exp1 exp2 ...)
+
+(setf (symbol-function 'cl-format)
+      (symbol-function 'format))
+
+(defmacro funmat (stream &rest forms)
+  (if (> (count #\~ (car forms)) 1)
+      `(cl-format ,stream ,@forms)
+    (loop for (fmt arg) on forms by #'cddr 
+	  collect fmt into fmts 
+	  collect arg into args 
+	  finally 
+          (return `(format ,stream 
+			   ,(apply #'concatenate 'string fmts) 
+			   ,@args)))))
+
+(setf (symbol-function 'format)
+      (symbol-function 'funmat))
+
 ;;; ===================================================================
 ;;; Various levels of reporting.  Change this to LOUD LOW or SILENT
 ;;; SCREAM reports get through LOW, but WHISPER reports don't.  SILENT
@@ -229,32 +384,29 @@ Don't know if this is any faster than the above, but it's definitely more comple
 ;;; Mike Traver's highly efficient, although somewhat less featureful
 ;;; version, allows string sharing thus saving conses:
 
-;;; Split string into substrings delimited by delimiter.  Unless copy
-;;; is t, return a list of substrings that share structure with the
-;;; original string.  If num-values is provided, it is an integer
-;;; representing the number of items to return.  Results will be
-;;; padded or truncated.
-
-(defun string-split (string &key (delimiter #\space) (copy t) num-values)
+(defun string-split (string &key (delimiter #\space) (convert-num-values? nil))
+  "Split string into substrings delimited by delimiter"
   (let ((substrings '())
         (length (length string))
         (last 0))
-    (flet ((add-substring (i)
-             (push (if copy
-                       (subseq string last i)
-                     (make-array (- i last)
-                                 :element-type 'character
-                                 :displaced-to string
-                                 :displaced-index-offset last))
-              substrings)))
-      (dotimes (i length)
-        (when (eq (char string i) delimiter)
-          (add-substring i)
-          (setq last (1+ i))))
-      (add-substring length)
-      (if num-values
-          (pad-or-truncate num-values (nreverse substrings))
-        (nreverse substrings)))))
+    (flet ((add-substring 
+	    (i)
+	    (push (subseq string last i)
+		  substrings)))
+	  (dotimes (i length)
+	    (when (eq (char string i) delimiter)
+	      (add-substring i)
+	      (setq last (1+ i))))
+	  (add-substring length)
+	  (let ((substrings (nreverse substrings)))
+	    (if convert-num-values?
+		(loop for string in substrings
+		      as v = (ignore-errors (read-from-string string))
+		      if (numberp v)
+		      collect v
+		      else 
+		      collect string)
+	      substrings)))))
 
 ;;; Do read-from-strings until the string is empty.  This is often used 
 ;;; in place of:
@@ -420,6 +572,15 @@ Don't know if this is any faster than the above, but it's definitely more comple
 (defun last-n (n l)
   (nthcdr (- (length l) n) l))
 
+;;; Asks if all the elements in two lists are the same by the
+;;; test. NOT if they are the same lists!
+
+(defun same-elts? (l &key (test #'equal))
+  (loop for (a . rest) on l
+	unless (or (null rest) (member a rest :test test))
+	do (return nil)
+	finally (return t)))
+
 ;;; Form all combinations of items in a list, including the list itself.
 
 (defun all-sublists (l)
@@ -441,8 +602,47 @@ Don't know if this is any faster than the above, but it's definitely more comple
 				     as w in w+
 				     collect w)))))
 
+(defun insert-at-every-position (what into)
+  (loop for i below (1+ (length into))
+	collect (append (first-n i into)
+			(list what)
+			(nthcdr i into))))
+
+;;; ===================================================================
+;;; Numerical combinations of fixed length
+
+(defun all-combinations (len lim)
+  (mapcan #'identity (all-combos2 len lim)))
+
+(defun all-combos2 (len lim)
+  (cond ((= len 0) (list (list nil)))
+	(t (loop for i from 1 to lim
+		 collect (insert-all i (all-combos2 (1- len) lim))))))
+
+(defun insert-all (what in)
+  (loop for elt in in
+	append (loop for subelt in elt
+		     collect (cons what subelt))))
+  
+;;; Useful for scanning params
+;;; (ALL-LIST-COMBINATIONS '((1 2) (a s d))) -> ((1 A) (1 S) (1 D) (2 A) (2 S) (2 D))
+
+(defun all-list-combinations (plists)
+  (cond ((null plists) (list nil))
+	(t (mapcan #'(lambda (elt) (insert-all-with-copies elt (all-list-combinations (cdr plists)))) (car plists)))))
+(defun insert-all-with-copies (what intos)
+  (loop for into in intos
+	collect (cons what (copy-list into))))
+
+
 ;;; ===================================================================
 ;;; --- Time/date functions.
+
+(defun human-readable-timestamp ()
+  (multiple-value-bind 
+   (sec min hr day mo year)
+   (decode-universal-time (get-universal-time))
+   (format nil "~a~2,'0d~2,'0d~2,'0d~2,'0d~2,'0d" year mo day hr min sec)))
 
 (defun get-time (&optional (utime (get-universal-time)))
   (multiple-value-bind
@@ -980,3 +1180,4 @@ apply-across-dirtree.
 
 (defun is-ascii-char? (c)
   (position c "abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMONPQRSTUVWXYZ `~!@#$%^&*()_+`1234567890-=[]\{}|;':\",./<>?"))
+

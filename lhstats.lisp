@@ -457,9 +457,9 @@
   (test-variables (x number) (mu number) (sigma :posnum))
   (/ (- x mu) sigma))
 
-;; PHI
-;; the CDF of standard normal distribution
-;; Rosner 125
+;; PHI: The CDF of standard normal distribution Rosner 125. User to
+;; convert a z score to a p value. Usually z's will be negative, so
+;; you may have to do (- (abs z)).
 
 (defun phi (x)
   "Adopted from CLASP 1.4.3, see copyright notice at <a href=\"http://eksl-www.cs.umass.edu/clasp.html\">http://eksl-www.cs.umass.edu/clasp.html</a>"
@@ -1649,10 +1649,10 @@ function in section 13.4."
         (let ((itmax 1000)
               (eps   3.0e-7)
               (gold 0d0) (g 0d0) (fac 1d0) (b1 1d0) (b0 0d0)
-              (anf 0d0) (ana 0d0) (an 0d0) (a1 x) (a0 1d0))
+              (anf 0d0) (ana 0d0) (an 0d0) (a1 (coerce x 'double-float)) (a0 1d0))
           (declare (type double-float gold g fac b1 b0 anf ana an a1 a0))
           (dotimes (i itmax)
-            (setf an  (float (1+ i))
+            (setf an  (coerce (1+ i) 'double-float)
                   ana (- an a)
                   a0  (* fac (+ a1 (* a0 ana)))
                   b0  (* fac (+ b1 (* b0 ana)))

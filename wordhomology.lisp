@@ -1,3 +1,6 @@
+(defpackage :wh (:use :common-lisp))
+(in-package :wh)
+
 (defun whtest ()
   (let* ((test-in-words
 	 '(("cat" . "dog")
@@ -44,20 +47,23 @@
 ;;; happen to be seen in).
 
 (defun compile-word (word whinfo)
-  (setq word (string-downcase word))
-  (sort 
-   (loop for p from 0 to (- (length word) 2)
-	 as l1 = (aref word p)
-	 as l2 = (aref word (1+ p))
-	 as l1.l2 = (cons l1 l2)
-	 as l2.l1 = (cons l2 l1)
-	 as k = (or (gethash l1.l2 (whinfo-lsht whinfo))
-		    (gethash l2.l1 (whinfo-lsht whinfo)))
-	 collect (or k
-		     (let ((k (incf (whinfo-lsk whinfo))))
-		       (setf (gethash l1.l2 (whinfo-lsht whinfo)) k)
-		       k)))
-   #'<))
+  (if (= 1 (length word))
+      (format t "Word Homology cannot compile 1-character words, like ~s, so it's being ignored.~%" word)
+    (progn
+      (setq word (string-downcase word))
+      (sort 
+       (loop for p from 0 to (- (length word) 2)
+	     as l1 = (aref word p)
+	     as l2 = (aref word (1+ p))
+	     as l1.l2 = (cons l1 l2)
+	     as l2.l1 = (cons l2 l1)
+	     as k = (or (gethash l1.l2 (whinfo-lsht whinfo))
+			(gethash l2.l1 (whinfo-lsht whinfo)))
+	     collect (or k
+			 (let ((k (incf (whinfo-lsk whinfo))))
+			   (setf (gethash l1.l2 (whinfo-lsht whinfo)) k)
+			   k)))
+       #'<))))
 
 ;;; This function determines how similar the two input lists are, where the lists are the numbers generated
 ;;; by compile-word
@@ -83,7 +89,9 @@
 
 (defun compile-target-list (names whinfo)
   (loop for name in names
-	collect (cons (compile-word (car name) whinfo) name)))
+	as compiled-word = (compile-word (car name) whinfo)
+	when compiled-word
+	collect (cons compiled-word name)))
 
 ;;; Get the top N scoring of a set of words w/o having to sort, which is too slow.
 
@@ -91,7 +99,7 @@
   (let* ((wc (compile-word w whinfo))
 	 (topn (loop for i from 1 to n collect (list 0 'foo 'bar)))
 	 )
-    (when wc ; Compile-word gives nil if there's no entries that match any letter combination
+    (when wc ; Compile-word gives nil if there's no entries that match any letter combination, or the word is 1 letter long
 	  (if (not (whinfo-tl whinfo)) (import-kb))
 	  ;; If the new word is more than the lowest of the ones in the set, replace that one with the new one.
 	  (loop for (tc . tw) in (whinfo-tl whinfo)
