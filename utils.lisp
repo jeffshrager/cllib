@@ -1,4 +1,4 @@
-;;; Common Lisp Utilities Copyright (c) Jeff Shrager 1999-2006 
+;;; Common Lisp Utilities Copyright (c) Jeff Shrager 1999-2021
 ;;; Contact: jshrager@stanford.edu
 
 ;;; =============================================
@@ -1180,4 +1180,26 @@ apply-across-dirtree.
 
 (defun is-ascii-char? (c)
   (position c "abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMONPQRSTUVWXYZ `~!@#$%^&*()_+`1234567890-=[]\{}|;':\",./<>?"))
+
+;;; ===================================================================
+
+;;; Get the list of slots and values from an object. Adds a special
+;;; *type* entry at the beginning with the type symbol. The slot name
+;;; part is useful too, and caches so that it's fast so it can be used
+;;; a lot as we expect that this will happen inside inner loops
+;;; sometimes.
+
+(defun object->alist (obj)
+  `((*type* . ,(type-of obj))
+    ,@(loop for slot-name in (object-slot-names obj)
+	    collect `(,slot-name . ,(slot-value obj slot-name)))))
+
+(defvar *obj[type]->slot-names* (make-hash-table :test #'equal))
+
+(defun object-slot-names (obj)
+  (let ((type (type-of obj)))
+    (or (gethash type *obj[type]->slot-names*)
+	(setf (gethash type *obj[type]->slot-names*)
+	      (loop for slot in (sb-mop:class-direct-slots (find-class (type-of obj)))
+		    collect (slot-value slot 'sb-pcl::name))))))
 
