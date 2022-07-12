@@ -1,5 +1,28 @@
-;;; Common Lisp Utilities Copyright (c) Jeff Shrager 1999-2021
+;;; Common Lisp Utilities Copyright (c) Jeff Shrager 1999-2022
 ;;; Contact: jshrager@stanford.edu
+
+;; Permission is hereby granted, free of charge, to any person obtaining
+;; a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without restriction,
+;; including without limitation the rights to use, copy, modify, merge,
+;; publish, distribute, sublicense, and/or sell copies of the Software,
+;; and to permit persons to whom the Software is furnished to do so,
+;; subject to the following conditions:
+
+;; The above copyright notice and this permission notice shall be
+;; included in all copies or substantial portions of the Software.
+
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+;; MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+;; LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+(defun assocdr (key alist &key (test #'equal))
+  (cdr (assoc key alist :test test)))
 
 ;;; =============================================
 ;;; A sort of partially-working attempt to deal with mail DATE: headers
@@ -153,8 +176,8 @@
 			   ,(apply #'concatenate 'string fmts) 
 			   ,@args)))))
 
-(setf (symbol-function 'format)
-      (symbol-function 'funmat))
+;(setf (symbol-function 'format)
+;      (symbol-function 'funmat))
 
 ;;; ===================================================================
 ;;; Various levels of reporting.  Change this to LOUD LOW or SILENT
@@ -195,6 +218,55 @@
      (loop for (name . value) in *FOO*
 	   do (format t "~a = ~s~%" name value))
      (cdar (last *FOO*))))
+
+;;; LTables is a generalized version of this piece of code that I
+;;; write all the f'ing time, so I'm trying to generalize it this
+;;; time, and I'll make it a util. The idea is to be able to create a
+;;; somewhat searchable internal database from TSV files. In the
+;;; simplest form it just load the header of the table into a separate
+;;; place, and then you can index the contents of the table from that
+
+(defstruct ltable header records)
+(defvar *ltables* (make-hash-table :test #'equal))
+
+(defun reset-ltables ()
+  (clrhash *ltables*))
+
+;; Unless given, the name of the table will be a keywordized version of the filename
+(defun load-ltable (tsv-filename &optional (table-name (keywordize tsv-filename)))
+  (with-open-file
+   (i tsv-filename)
+   (setf (gethash table-name *ltables*)
+	 (make-ltable :header (loop for header in (string-split (trim-returns-and-shit (read-line i nil nil)) :delimiter #\tab)
+				    collect (keywordize (make-string-keywordizable header)))
+		      :records (loop for line = (read-line i nil nil)
+				     until (null line)
+				     collect (string-split (trim-returns-and-shit (read-line i nil nil)) :delimiter #\tab)))))
+  (let ((ltable (gethash table-name *ltables*)))
+    (format t "Loaded ~a into ~s records from ~s~% Headers: ~s~%"
+	    (length (ltable-records ltable)) table-name
+	    tsv-filename (ltable-header ltable)))
+  )
+
+;;; For some strange reason, having a return or newline at the end of
+;;; the line screws up ... well, everything!
+
+(defun trim-returns-and-shit (s)
+  (string-trim " " (substitute #\space #\return (substitute #\space #\newline s))))
+
+(defun ltable-select-all (lt cols)
+  (let* ((lt (gethash lt *ltables*))
+	 (header (ltable-header lt))
+	 (recs (ltable-records lt)))
+    (loop for rec in recs
+	  collect (loop for col in cols
+			append (loop for head in header
+				      as val in rec
+				      when (eq head col)
+				      collect (cons col val))))))
+
+(defun make-string-keywordizable (s)
+  (string-trim "_" (substitute #\_ #\space (fast-substitute s))))
 
 (defun keywordize (symbol &optional (case :upper))
   "Return a symbol in the KEYWORD package with the same name as SYMBOL (modified appropriately for CASE).  SYMBOL may also be a string."
@@ -634,6 +706,20 @@ Don't know if this is any faster than the above, but it's definitely more comple
   (loop for into in intos
 	collect (cons what (copy-list into))))
 
+;;; For, e.g., (a b c) -> ((a b c) (a c b) (b c a) (b a c) (c a b) (c b a)) [order not guaranteed!]
+
+(defun all-complete-orderings (l)
+  (cond ((null (cdr l)) (list l))
+	(t (loop for sub in (all-complete-orderings (cdr l))
+		 append (insert-at-every-position (car l) sub))))) 
+
+(defun dec->base (n b)
+  "Adapted from http://www.lee-mac.com/baseconversion.html"
+  (if (< n b)
+      (string (code-char (+ n (if (< n 10) 48 55))))
+    (format nil "~a~a" (dec->base (truncate (/ n b)) b) (dec->base (mod n b) b))
+    )
+  )
 
 ;;; ===================================================================
 ;;; --- Time/date functions.
