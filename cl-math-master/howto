@@ -1,0 +1,5 @@
+(require "asdf")
+(asdf:load-asd "/Users/jeffshrager/Desktop/etc/cllib/cl-math-master/cl-math.asd")
+(asdf:load-system :cl-math)
+This will package lock at two points. Just hit "0" to push through those.
+The unit tests will also break eventually, but most of the package seems to work fine.
